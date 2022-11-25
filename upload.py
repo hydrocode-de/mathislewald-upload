@@ -9,8 +9,8 @@ import geopandas as gpd
 # the code will be running in a container and thus, the output locations are passed as env variables
 def get_env() -> dict:
     return dict(
-        DATADIR=os.environ.get('DATADIR', 'out/data'),
-        IMGDIR=os.environ.get('IMGDIR', 'out/img')
+        DATADIR=os.environ.get('DATADIR', '/src/data'),
+        IMGDIR=os.environ.get('IMGDIR', '/src/img')
     )
 
 def drop_session_data():
