@@ -88,7 +88,7 @@ def inventory_data_page():
         # go for the archive
         fnames = [f.filename for f in zip.filelist if not f.filename.startswith('__') and not f.filename.startswith('.')]
         for fname in fnames:
-            zip.extract(fname, path=os.path.join(imgpath, fname))
+            zip.extract(fname, path=imgpath)
 
     st.success('done.')
 
