@@ -1,17 +1,24 @@
+from typing import List
+
 import streamlit as st
 import os
 import zipfile
+from datetime import datetime as dt
 
 import pandas as pd
 import geopandas as gpd
+import fiona
 
 
 # the code will be running in a container and thus, the output locations are passed as env variables
 def get_env() -> dict:
-    return dict(
+    env_dirs =  dict(
         DATADIR=os.environ.get('DATADIR', '/src/data'),
-        IMGDIR=os.environ.get('IMGDIR', '/src/img')
+        IMGDIR=os.environ.get('IMGDIR', '/src/img'),
     )
+    env_dirs['INVGPKG'] = os.path.join(env_dirs['DATADIR'], 'inventory.gpkg')
+
+    return env_dirs
 
 def drop_session_data():
     if 'inventory' in st.session_state:
@@ -33,7 +40,7 @@ def inventory_data_page():
     """Component to control the inventory data upload page"""
     st.title('Upload inventory data')
     st.info('Inventory data is the main data, which represents a Tree entity')
-
+    
     # first get the inventory dataframe
     inv = get_inventory_df()
 
@@ -41,6 +48,16 @@ def inventory_data_page():
     drop = st.sidebar.button('DROP CACHE')
     if drop:
         drop_session_data()
+
+    # check if there are already inventory layers
+    inv_layers = get_existing_inventory()
+    if len(inv_layers) > 0:
+        st.markdown(f"There already inventory layers: `[{', '.join(inv_layers)}]`. Choosing the same layer name will update the existing source.")
+    else:
+        st.markdown('No existing inventory data found on the server. Use a layer-name on upload.')
+    layername = st.text_input('LAYER', value=f"inventory-{dt.now().year}")
+    if layername in inv_layers:
+        st.warning(f'You will overwrite the layer: `{layername}`')
 
     # make a preview
     with st.expander('INVENTORY', expanded=True):
@@ -52,13 +69,21 @@ def inventory_data_page():
     # process the inventory
     with st.spinner('START PROCESSING...'):
         # get the paths
+        inventory_path = get_env()['INVGPKG']
         datapath = get_env().get('DATADIR')
         imgpath = get_env().get('IMGDIR')
 
+        # check data-path
+        if not os.path.exists(datapath):
+            os.mkdir(datapath)
+        if not os.path.exists(imgpath):
+            os.mkdir(imgpath)
+
         # convert the inventory
         gdf = gpd.GeoDataFrame(inv.copy(), geometry=gpd.points_from_xy(inv.x, inv.y, crs=32632))
+        
         # TODO: THIS overwrites, we want merging?
-        gdf.to_file(os.path.join(datapath, 'inventory.shp'))
+        gdf.to_file(inventory_path, driver='GPKG', layer=layername)
 
         # go for the archive
         fnames = [f.filename for f in zip.filelist if not f.filename.startswith('__') and not f.filename.startswith('.')]
@@ -66,6 +91,19 @@ def inventory_data_page():
             zip.extract(fname, path=os.path.join(imgpath, fname))
 
     st.success('done.')
+
+
+def get_existing_inventory() -> List[str]:
+    """Check if there is existing inventory data"""
+    path = get_env().get('INVGPKG')
+
+    # if there is nothing yet, return an empty list
+    if not os.path.exists(path):
+        return []
+    else:
+        # the geopackage exists
+        return fiona.listlayers(path)
+
 
 def upload_base_data():
     """
