@@ -118,7 +118,10 @@ def upload_base_data():
     # check if something was uploaded
     if num > 0:
         # get environment variables
-        path = get_env().get('DATADIR')
+        datadir = get_env().get('DATADIR')
+        path = os.path.join(datadir, 'base')
+        if not os.path.exists(path):
+            os.mkdir(path)
 
         bar = st.progress(0.0)
         for i, fname in enumerate(filenames):
