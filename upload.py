@@ -1,9 +1,12 @@
-from typing import List
+from typing import List, Dict, Union
 
 import streamlit as st
 import os
 import zipfile
 from datetime import datetime as dt
+import hashlib
+import glob
+import json
 
 import pandas as pd
 import geopandas as gpd
@@ -16,10 +19,65 @@ def get_env() -> dict:
         DATADIR=os.environ.get('DATADIR', '/src/data'),
         WWWDIR=os.environ.get('WWWDIR', '/src/www'),
     )
+    env_dirs['BASEDIR'] = os.path.join(env_dirs['DATADIR'], 'base')
     env_dirs['INVGPKG'] = os.path.join(env_dirs['DATADIR'], 'inventory.gpkg')
     env_dirs['IMGDIR'] = os.environ.get('IMGDIR', os.path.join(env_dirs['WWWDIR'], 'img'))
 
     return env_dirs
+
+def _get_file_hash(fname: str, algorithm = hashlib.md5) -> str:
+    """Hash the given file"""
+    with open(fname, 'rb') as f:
+        return algorithm(f.read()).hexdigest()
+
+def get_checksums(omit: List[str] = []) -> Dict[str, str]:
+    """Return checksums for all source types"""
+    # get env paths
+    env = get_env()
+
+    # checksum container
+    checksums = dict()
+
+    # inventory gpkg
+    if 'inventory' not in omit:
+        checksums['inventory'] = _get_file_hash(env['INVGPKG'])
+    
+    # add images
+    if 'images' not in omit:
+        hs = [_get_file_hash(fname) for fname in glob.glob(os.path.join(env['IMGDIR'], '*.png'))]
+        hs.sort()
+        checksums['images'] = hashlib.md5(','.join(hs).encode()).hexdigest()
+
+    # add baselayer
+    if 'baselayer' not in omit:
+        checksums['baselayer'] = {os.path.splitext(os.path.basename(fname))[0]: _get_file_hash(fname) for fname in glob.glob(os.path.join(env['BASEDIR'], '*.tif'))}
+
+    return checksums
+
+def update_checksum_json(checksums: Dict[str, str]):
+    """Update the JSON file on the server"""
+    www = get_env()['WWWDIR']
+    path = os.path.join(www, 'assets')
+    fname = os.path.join(path, 'checksums.json')
+
+    # check if the path exists
+    if not os.path.exists(path):
+        os.makedirs(path)
+
+    # get the content
+    if os.path.exists(fname):
+        with open(fname, 'r') as f:
+            old_checksums = json.load(f)
+    else:
+        old_checksums = dict()
+    
+    # update
+    old_checksums.update(checksums)
+
+    # write content
+    with open(fname, 'w') as f:
+        json.dump(old_checksums, f)
+
 
 def drop_session_data():
     if 'inventory' in st.session_state:
@@ -71,14 +129,14 @@ def inventory_data_page():
     with st.spinner('START PROCESSING...'):
         # get the paths
         inventory_path = get_env()['INVGPKG']
-        datapath = get_env().get('DATADIR')
-        imgpath = get_env().get('IMGDIR')
+        datapath = get_env()['DATADIR']
+        imgpath = get_env()['IMGDIR']
 
         # check data-path
         if not os.path.exists(datapath):
-            os.mkdir(datapath)
+            os.makedirs(datapath)
         if not os.path.exists(imgpath):
-            os.mkdir(imgpath)
+            os.makedirs(imgpath)
 
         # convert the inventory
         gdf = gpd.GeoDataFrame(inv.copy(), geometry=gpd.points_from_xy(inv.x, inv.y, crs=32632))
@@ -90,8 +148,6 @@ def inventory_data_page():
         fnames = [f.filename for f in zip.filelist if not f.filename.startswith('__') and not f.filename.startswith('.')]
         for fname in fnames:
             zip.extract(fname, path=imgpath)
-
-    st.success('done.')
 
 
 def get_existing_inventory() -> List[str]:
@@ -119,10 +175,9 @@ def upload_base_data():
     # check if something was uploaded
     if num > 0:
         # get environment variables
-        datadir = get_env().get('DATADIR')
-        path = os.path.join(datadir, 'base')
+        path = get_env()['BASEDIR']
         if not os.path.exists(path):
-            os.mkdir(path)
+            os.makedirs(path)
 
         bar = st.progress(0.0)
         for i, fname in enumerate(filenames):
@@ -136,10 +191,7 @@ def upload_base_data():
                 f.write(barray)
             st.write(f'Wrote {fname.name} to target location: {fpath}')
             # update progressbar
-            bar.progress((i + 1) / num)
-        
-        st.success('done')
-        
+            bar.progress((i + 1) / num)     
     else:
         st.stop()
 
@@ -228,11 +280,23 @@ def main():
     ACT = dict(inventory="Upload inventory data", base="Upload base raster")
     st.sidebar.radio('Select an action', options=list(ACT.keys()), format_func=lambda k: ACT.get(k), key="action")
     
+    # indicate which sha to omit
+    check_omit = []
+
     # switch the action
     if st.session_state.action=='inventory':
         inventory_data_page()
+        check_omit = ['baselayer']
     elif st.session_state.action=='base':
         base_data_page()
+        check_omit = ['inventory', 'images']
+    
+    # if not stopped, create the shas
+    with st.spinner('Please wait. Creating checksums...'):
+        checksums = get_checksums(omit=check_omit)
+        update_checksum_json(checksums)
+    
+    st.success('Done.')
 
 
 if __name__ == '__main__':
