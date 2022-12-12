@@ -14,9 +14,10 @@ import fiona
 def get_env() -> dict:
     env_dirs =  dict(
         DATADIR=os.environ.get('DATADIR', '/src/data'),
-        IMGDIR=os.environ.get('IMGDIR', '/src/img'),
+        WWWDIR=os.environ.get('WWWDIR', '/src/www'),
     )
     env_dirs['INVGPKG'] = os.path.join(env_dirs['DATADIR'], 'inventory.gpkg')
+    env_dirs['IMGDIR'] = os.environ.get('IMGDIR', os.path.join(env_dirs['WWWDIR'], 'img'))
 
     return env_dirs
 
