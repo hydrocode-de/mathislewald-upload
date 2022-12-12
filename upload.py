@@ -21,7 +21,7 @@ def get_env() -> dict:
     )
     env_dirs['BASEDIR'] = os.path.join(env_dirs['DATADIR'], 'base')
     env_dirs['INVGPKG'] = os.path.join(env_dirs['DATADIR'], 'inventory.gpkg')
-    env_dirs['IMGDIR'] = os.environ.get('IMGDIR', os.path.join(env_dirs['WWWDIR'], 'img'))
+    env_dirs['IMGDIR'] = os.environ.get('IMGDIR', os.path.join(env_dirs['WWWDIR'], 'assets', 'img'))
 
     return env_dirs
 
