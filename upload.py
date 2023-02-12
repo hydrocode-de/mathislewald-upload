@@ -32,6 +32,7 @@ def _get_file_hash(fname: str, algorithm = hashlib.md5) -> str:
     with open(fname, 'rb') as f:
         return algorithm(f.read()).hexdigest()
 
+
 def get_checksums(omit: List[str] = []) -> Dict[str, str]:
     """Return checksums for all source types"""
     # get env paths
@@ -56,6 +57,7 @@ def get_checksums(omit: List[str] = []) -> Dict[str, str]:
         checksums['baselayer'] = hashlib.md5(','.join(layers).encode()).hexdigest()
 
     return checksums
+
 
 def update_checksum_json(checksums: Dict[str, str]):
     """Update the JSON file on the server"""
@@ -89,6 +91,7 @@ def drop_session_data():
         del st.session_state.png_zip
     
     st.experimental_rerun()
+
 
 def base_data_page():
     """Component to control the base data upload page"""
@@ -264,10 +267,14 @@ def get_inventory_df() -> pd.DataFrame:
     if fname is None:
         st.stop()
     
+    # read in CSV
     df = pd.read_csv(fname)
 
     # convert the dataframe columns
     df.columns = [col.lower() for col in df.columns]
+
+    # make sure, the images are always a list
+    df['image'] = df.image.apply(lambda v: f"{v};" if not ';' in v else v)
 
     # set the dataframe to the session and restart
     st.session_state.inventory = df
