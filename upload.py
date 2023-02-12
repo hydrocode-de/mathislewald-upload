@@ -11,10 +11,12 @@ import json
 import pandas as pd
 import geopandas as gpd
 import fiona
+from dotenv import load_dotenv
 
 
 # the code will be running in a container and thus, the output locations are passed as env variables
 def get_env() -> dict:
+    load_dotenv()
     env_dirs =  dict(
         DATADIR=os.environ.get('DATADIR', '/src/data'),
         WWWDIR=os.environ.get('WWWDIR', '/src/www'),
@@ -50,7 +52,8 @@ def get_checksums(omit: List[str] = []) -> Dict[str, str]:
 
     # add baselayer
     if 'baselayer' not in omit:
-        checksums['baselayer'] = {os.path.splitext(os.path.basename(fname))[0]: _get_file_hash(fname) for fname in glob.glob(os.path.join(env['BASEDIR'], '*.tif'))}
+        layers = sorted([_get_file_hash(fname) for fname in glob.glob(os.path.join(env['BASEDIR'], '*.tif'))])
+        checksums['baselayer'] = hashlib.md5(','.join(layers).encode()).hexdigest()
 
     return checksums
 
