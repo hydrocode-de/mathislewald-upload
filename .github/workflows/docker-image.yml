@@ -1,12 +1,12 @@
 name: Docker Image CI
 
-on:
-  release:
-    types: [published]
+on: push
     
 jobs:
 
   build:
+    name: Build new docker image
+    if: startsWith(github.event.ref, 'refs/tags/v')
 
     runs-on: ubuntu-latest
     permissions:
