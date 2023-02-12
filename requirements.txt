@@ -5,3 +5,4 @@ streamlit
 fire
 python-dotenv
 watchdog
+matplotlib

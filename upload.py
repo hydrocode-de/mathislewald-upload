@@ -127,6 +127,12 @@ def inventory_data_page():
     # make a preview
     with st.expander('INVENTORY', expanded=True):
         st.dataframe(inv)
+    
+    # convert the inventory
+        gdf = gpd.GeoDataFrame(inv.copy(), geometry=gpd.points_from_xy(inv.x, inv.y, crs=32632)).to_crs(4326)
+    
+    with st.expander('PREVIEW PLOT', expanded=False):
+        st.pyplot(gdf.plot().figure)
 
     # next step is to uplaod the png files
     zip = upload_inventory_img(inv)
@@ -143,9 +149,6 @@ def inventory_data_page():
             os.makedirs(datapath)
         if not os.path.exists(imgpath):
             os.makedirs(imgpath)
-
-        # convert the inventory
-        gdf = gpd.GeoDataFrame(inv.copy(), geometry=gpd.points_from_xy(inv.x, inv.y, crs=32632))
         
         # TODO: THIS overwrites, we want merging?
         gdf.to_file(inventory_path, driver='GPKG', layer=layername)
