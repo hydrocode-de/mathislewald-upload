@@ -4,12 +4,13 @@ FROM python:3.9
 RUN mkdir -p /src/app
 RUN mkdir -p /src/data
 RUN mkdir -p /src/www
+RUN mkdir -p /src/img
 WORKDIR /src
 
 # copy the app
 COPY ./requirements.txt /src/requirements.txt
 COPY ./upload.py /src/app/upload.py
-RUN echo "DATA_DIR=/src/data\nWWW_DIR=/src/www" >> /src/.env
+RUN echo "DATADIR=/src/data\nWWWDIR=/src/www\nIMGDIR=/src/img" >> /src/.env
 
 # install requirements
 RUN apt-get update && apt-get install -y libgdal-dev
