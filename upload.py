@@ -62,7 +62,7 @@ def get_checksums(omit: List[str] = []) -> Dict[str, str]:
 def update_checksum_json(checksums: Dict[str, str]):
     """Update the JSON file on the server"""
     www = get_env()['WWWDIR']
-    path = os.path.join(www, 'assets')
+    path = os.path.join(www, 'html', 'assets')
     fname = os.path.join(path, 'checksums.json')
 
     # check if the path exists
@@ -129,7 +129,7 @@ def inventory_data_page():
         st.dataframe(inv)
     
     # convert the inventory
-        gdf = gpd.GeoDataFrame(inv.copy(), geometry=gpd.points_from_xy(inv.x, inv.y, crs=32632)).to_crs(4326)
+    gdf = gpd.GeoDataFrame(inv.copy(), geometry=gpd.points_from_xy(inv.x, inv.y, crs=32632)).to_crs(4326)
     
     with st.expander('PREVIEW PLOT', expanded=False):
         st.pyplot(gdf.plot().figure)
