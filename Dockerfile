@@ -5,7 +5,6 @@ RUN mkdir -p /src/app
 RUN mkdir -p /src/data
 RUN mkdir -p /src/www
 RUN mkdir -p /src/img
-WORKDIR /src
 
 # copy the app
 COPY ./requirements.txt /src/requirements.txt
@@ -17,5 +16,6 @@ RUN apt-get update && apt-get install -y libgdal-dev
 #RUN pip install GDAL
 RUN pip install -r /src/requirements.txt
 
-# run 
-CMD ["streamlit", "run", "app/upload.py", "--server.maxUploadSize=2000"]
+# run
+WORKDIR /src/app 
+CMD ["streamlit", "run", "upload.py", "--server.maxUploadSize=2000"]
